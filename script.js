@@ -19,27 +19,23 @@ openBookFormBtn.addEventListener("click", () => {
   bookForm.classList.toggle("hidden");
 });
 
-
-closeBookFormBtn.addEventListener("click", () => {
-  const isDataEntered = titleInput.value || authorInput.value ||
-                      pagesInput.value;
-  if (isDataEntered) {
-    confirmCloseDialog.showModal();
-  } else {
-    clear(); 
-  }
-});
-
-dialogCancelBtn.addEventListener("click", () => {
-  confirmCloseDialog.close();
-});
-
-dialogDiscardBtn.addEventListener("click", () => {
-  clear();
-});
-
-const library = localStorage.getItem("data") || [];
-
+const library = JSON.parse(localStorage.getItem("books")) || [];
+const updateBooksContainer = () => {
+  booksContainer.innerHTML = "";
+  
+  library.forEach(({id, title, author, pages, read}) => {
+    booksContainer.innerHTML += `
+      <div class="book-card" id=${id}>
+        <p>Title: ${title}</p>
+        <p>Author: ${author}</p>
+        <p>Pages: ${pages}</p>
+        <p>${read ? "Already read" : "Not yet read"}</p>
+        <button onclick="editBookCard(this)" class="btn">Edit</button><button onclick="deleteBookCard(this)" class="btn">Delete</button>
+      </div>
+    `;
+  });
+};
+updateBooksContainer();
 let currentBook = {};
 
 function Book(title, author, pages, read) {
@@ -54,36 +50,68 @@ function Book(title, author, pages, read) {
   }
 }
 
+closeBookFormBtn.addEventListener("click", () => {
+  const isDataEntered = titleInput.value || authorInput.value ||
+                      pagesInput.value;
+  const isDataModified = titleInput.value !== currentBook.title ||
+                      authorInput.value !== currentBook.author ||
+                      pagesInput.value !== currentBook.pages;
+  if (isDataEntered && isDataModified) {
+    confirmCloseDialog.showModal();
+  } else {
+    clear(); 
+  }
+});
+
+dialogCancelBtn.addEventListener("click", () => {
+  confirmCloseDialog.close();
+});
+
+dialogDiscardBtn.addEventListener("click", () => {
+  clear();
+});
+
 addOrUpdateBookBtn.addEventListener("click", (e) => {
   e.preventDefault();
-  addBookToLibrary();
+  addOrUpdateBookBtn.innerText = "Add Book";
+  const bookIndex = library.findIndex((i) => i.id === currentBook.id);
+  let read = false;
+  if (readBooleanInput[0].checked) {
+      read = true;
+  }
+  const b = new Book(titleInput.value, authorInput.value, pagesInput.value, read);
+    
+  if (bookIndex === -1) {
+    library.unshift(b);
+  } else {
+    library[bookIndex] = b;
+  }
+  localStorage.setItem("books", JSON.stringify(library));
   updateBooksContainer();
   clear();
 });
-// const theHobbit = new Book("The Hobbit", "J.R.R. Tolkien", 295, false);
 
-const updateBooksContainer = () => {
-  booksContainer.innerHTML = "";
-  
-  library.forEach(({id, title, author, pages, read}) => {
-    booksContainer.innerHTML += `
-      <div class="book-card">
-        <p>Title: ${title}</p>
-        <p>Author: ${author}</p>
-        <p>Pages: ${pages}</p>
-        <p>${read ? "Already read" : "Not yet read"}</p>
-      </div>
-    `;
-  });
-};
+const deleteBookCard = (buttonEl) => {
+  const bookIndex = library.findIndex((i) => i.id === buttonEl.parentElement.id);
+  library.splice(bookIndex, 1);
+  updateBooksContainer();
+  localStorage.setItem("books", JSON.stringify(library));
+}
 
-const addBookToLibrary = () => {
-  let read = false;
-  if (readBooleanInput[0].checked) {
-    read = true;
+const editBookCard = (buttonEl) => {
+  const bookIndex = library.findIndex((i) => i.id === buttonEl.parentElement.id);
+  currentBook = library[bookIndex];
+  titleInput.value = currentBook.title;
+  authorInput.value = currentBook.author;
+  pagesInput.value = currentBook.pages;
+  if (currentBook.read) {
+    readBooleanInput[0].checked = true;    
+  } else {
+    readBooleanInput[1].checked = true;    
   }
-  const b = new Book(titleInput.value, authorInput.value, pagesInput.value, read);
-  library.unshift(b);
+  addOrUpdateBookBtn.innerText = "Update Book";
+  bookForm.classList.toggle("hidden");
+  localStorage.setItem("books", JSON.stringify(library));
 }
 
 const clear = () => {
